@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { PlusCircle, Trash2, Search, Eye } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { PlusCircle, Trash2, Search, Eye, Calendar, Filter, CheckCircle } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import NuevaVentaModal from "../components/NuevaVentaModal";
 import EliminarVentaModal from "../components/EliminarVentaModal";
 import ProductosModal from "../components/ProductosModal";
+import VerificarPagoModal from "../components/VerificarPagoModal"; // Nuevo componente
 import { useVenta } from "../context/VentaContext";
 
 const Ventas = () => {
@@ -11,19 +12,97 @@ const Ventas = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProductosModalOpen, setIsProductosModalOpen] = useState(false);
   const [isEliminarModalOpen, setIsEliminarModalOpen] = useState(false);
+  const [isVerificarPagoModalOpen, setIsVerificarPagoModalOpen] = useState(false); // Nuevo estado
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const { ventas, loading, deleteVenta } = useVenta();
 
   // Estado para búsqueda
   const [busqueda, setBusqueda] = useState("");
 
-  // Filtrar ventas según la búsqueda
-  const ventasFiltradas = ventas.filter(
-    (venta) =>
+  // Estado para el filtro de fecha
+  const [filtroFecha, setFiltroFecha] = useState("todo"); // Opciones: "hoy", "todo"
+
+  // Estado para filtro de estado
+  const [filtroEstado, setFiltroEstado] = useState("todos"); // Opciones: "todos", "pagado", "pendiente", "parcial"
+
+  // Estado para mostrar/ocultar dropdown de filtro de estado
+  const [mostrarFiltroEstado, setMostrarFiltroEstado] = useState(false);
+
+  // Estado para guardar la fecha actual
+  const [fechaHoy, setFechaHoy] = useState("");
+
+  // Establecer la fecha de hoy al cargar el componente
+  useEffect(() => {
+    const hoy = new Date();
+    const año = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    const fechaFormateada = `${año}-${mes}-${dia}`;
+    setFechaHoy(fechaFormateada);
+  }, []);
+
+  // Función mejorada para comprobar si una fecha es hoy
+  const esFechaHoy = (fecha) => {
+    // Get today's date at midnight (remove time component)
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Parse the input date
+    let fechaObj;
+
+    // Handle DD/MM/YYYY format
+    if (fecha.includes('/')) {
+      const [dia, mes, año] = fecha.split('/').map(part => parseInt(part, 10));
+      fechaObj = new Date(año, mes - 1, dia); // Note: months are 0-indexed in JS Date
+    }
+    // Handle YYYY-MM-DD format
+    else if (fecha.includes('-')) {
+      const [año, mes, dia] = fecha.split('-').map(part => parseInt(part, 10));
+      fechaObj = new Date(año, mes - 1, dia);
+    }
+    // If parsing failed, return false
+    if (!fechaObj || isNaN(fechaObj.getTime())) {
+      return false;
+    }
+
+    // Remove time component for comparison
+    fechaObj.setHours(0, 0, 0, 0);
+
+    // Compare the dates
+    return fechaObj.getTime() === hoy.getTime();
+  };
+
+  // Filtrar ventas según la búsqueda, el filtro de fecha y el filtro de estado
+  const ventasFiltradas = ventas.filter((venta) => {
+    // Filtro por búsqueda
+    const coincideBusqueda =
       venta.cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
       venta.estado.toLowerCase().includes(busqueda.toLowerCase()) ||
-      venta.fecha.includes(busqueda)
-  );
+      venta.fecha.includes(busqueda);
+
+    // Filtro por fecha
+    const coincideFecha = filtroFecha === "hoy" ? esFechaHoy(venta.fecha) : true;
+
+    // Filtro por estado
+    const coincideEstado = filtroEstado === "todos" || venta.estado.toLowerCase() === filtroEstado.toLowerCase();
+
+    // Combinar todos los filtros
+    return coincideBusqueda && coincideFecha && coincideEstado;
+  });
+
+  // Cerrar el dropdown de filtro cuando se hace clic fuera de él
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (mostrarFiltroEstado && !event.target.closest('.filtro-estado-container')) {
+        setMostrarFiltroEstado(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mostrarFiltroEstado]);
 
   // Función para obtener clase de color según el estado
   const getEstadoColor = (estado) => {
@@ -39,6 +118,20 @@ const Ventas = () => {
     }
   };
 
+  // Función para obtener texto y color para el botón de filtro de estado
+  const getEstadoFilterLabel = () => {
+    switch (filtroEstado) {
+      case "pagado":
+        return { texto: "Pagado", color: "text-green-600 bg-green-50 border-green-200" };
+      case "pendiente":
+        return { texto: "Pendiente", color: "text-red-600 bg-red-50 border-red-200" };
+      case "parcial":
+        return { texto: "Parcial", color: "text-yellow-600 bg-yellow-50 border-yellow-200" };
+      default:
+        return { texto: "Estado", color: "text-gray-700 bg-white" };
+    }
+  };
+
   // Función para abrir el modal de productos
   const verProductos = (venta) => {
     setVentaSeleccionada(venta); // Guardar la venta seleccionada
@@ -49,6 +142,12 @@ const Ventas = () => {
   const abrirModalEliminar = (venta) => {
     setVentaSeleccionada(venta);
     setIsEliminarModalOpen(true);
+  };
+
+  // Función para abrir el modal de verificación de pago
+  const abrirModalVerificarPago = (venta) => {
+    setVentaSeleccionada(venta);
+    setIsVerificarPagoModalOpen(true);
   };
 
   // Función para confirmar la eliminación
@@ -91,18 +190,113 @@ const Ventas = () => {
           </button>
         </div>
 
-        {/* Barra de búsqueda */}
-        <div className="relative mb-6">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search size={18} className="text-gray-400" />
+        {/* Barra de búsqueda y botones de filtro */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Search size={18} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar ventas por cliente, estado o fecha..."
+              className="w-full pl-10 pr-4 py-3 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm bg-white"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Buscar ventas por cliente, estado o fecha..."
-            className="w-full pl-10 pr-4 py-3 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm bg-white"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFiltroFecha("todo")}
+              className={`px-4 py-3 rounded-xl transition-all ${
+                filtroFecha === "todo"
+                  ? "bg-blue-600 text-white font-medium shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Todas las Ventas
+            </button>
+            <button
+              onClick={() => setFiltroFecha("hoy")}
+              className={`px-4 py-3 rounded-xl transition-all flex items-center gap-2 ${
+                filtroFecha === "hoy"
+                  ? "bg-blue-600 text-white font-medium shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Calendar size={16} />
+              Ventas de Hoy
+            </button>
+
+            {/* Botón y dropdown para filtrar por estado */}
+            <div className="relative filtro-estado-container">
+              <button
+                onClick={() => setMostrarFiltroEstado(!mostrarFiltroEstado)}
+                className={`px-4 py-3 rounded-xl transition-all flex items-center gap-2 border ${getEstadoFilterLabel().color}`}
+              >
+                <Filter size={16} />
+                <span>{getEstadoFilterLabel().texto}</span>
+              </button>
+
+              {/* Dropdown de filtros de estado */}
+              {mostrarFiltroEstado && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white shadow-lg z-10 overflow-hidden">
+                  <ul className="py-1">
+                    <li>
+                      <button
+                        onClick={() => {
+                          setFiltroEstado("todos");
+                          setMostrarFiltroEstado(false);
+                        }}
+                        className="block px-4 py-3 text-left w-full hover:bg-gray-50 transition-colors"
+                      >
+                        Todos los estados
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          setFiltroEstado("pagado");
+                          setMostrarFiltroEstado(false);
+                        }}
+                        className="block px-4 py-3 text-left w-full hover:bg-green-50 text-green-600 transition-colors"
+                      >
+                        Pagado
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          setFiltroEstado("pendiente");
+                          setMostrarFiltroEstado(false);
+                        }}
+                        className="block px-4 py-3 text-left w-full hover:bg-red-50 text-red-600 transition-colors"
+                      >
+                        Pendiente
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          setFiltroEstado("parcial");
+                          setMostrarFiltroEstado(false);
+                        }}
+                        className="block px-4 py-3 text-left w-full hover:bg-yellow-50 text-yellow-600 transition-colors"
+                      >
+                        Parcial
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Fecha y filtros activos */}
+        <div className="mb-4 text-sm text-gray-500">
+          Mostrando:
+          {filtroFecha === "hoy" ? ` Ventas del ${fechaHoy} (Hoy)` : " Todas las ventas"}
+          {filtroEstado !== "todos" && ` con estado "${filtroEstado}"`}
         </div>
 
         {/* Ventas en tarjetas - Vista móvil y tablets */}
@@ -154,6 +348,15 @@ const Ventas = () => {
                     <Trash2 size={16} />
                     <span>Eliminar</span>
                   </button>
+                  {(venta.estado.toLowerCase() === "pendiente" || venta.estado.toLowerCase() === "parcial") && (
+                    <button
+                      onClick={() => abrirModalVerificarPago(venta)} // Abrir modal de verificación de pago
+                      className="flex-1 py-2 px-3 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-medium text-sm flex items-center justify-center gap-1"
+                    >
+                      <CheckCircle size={16} />
+                      <span>Verificar Pago</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -186,7 +389,7 @@ const Ventas = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{venta.productos.length}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">S/ {venta.total.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium ${venta.montoPendiente > 0 ? 'text-red-600' : 'text-green-600'}">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
                       S/ {venta.montoPendiente.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -208,6 +411,14 @@ const Ventas = () => {
                         >
                           <Trash2 size={16} />
                         </button>
+                        {(venta.estado.toLowerCase() === "pendiente" || venta.estado.toLowerCase() === "parcial") && (
+                          <button
+                            onClick={() => abrirModalVerificarPago(venta)} // Abrir modal de verificación de pago
+                            className="text-green-600 bg-green-50 hover:bg-green-100 p-2 rounded-lg transition-colors"
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -223,7 +434,15 @@ const Ventas = () => {
                 <Search size={32} className="text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-1">No se encontraron ventas</h3>
-              <p className="text-gray-500 max-w-md mx-auto">No hay ventas que coincidan con tu búsqueda. Intenta con otros términos o registra una nueva venta.</p>
+              <p className="text-gray-500 max-w-md mx-auto">
+                {filtroFecha === "hoy" && filtroEstado === "todos"
+                  ? "No hay ventas registradas para el día de hoy. Registra una nueva venta o cambia el filtro."
+                  : filtroEstado !== "todos" && filtroFecha === "todo"
+                  ? `No hay ventas con estado "${filtroEstado}" que coincidan con tu búsqueda.`
+                  : filtroEstado !== "todos" && filtroFecha === "hoy"
+                  ? `No hay ventas de hoy con estado "${filtroEstado}".`
+                  : "No hay ventas que coincidan con tu búsqueda. Intenta con otros términos o registra una nueva venta."}
+              </p>
             </div>
           )}
         </div>
@@ -246,6 +465,13 @@ const Ventas = () => {
           isOpen={isEliminarModalOpen}
           onClose={() => setIsEliminarModalOpen(false)}
           onConfirm={confirmarEliminar}
+          venta={ventaSeleccionada}
+        />
+
+        {/* Modal de Verificar Pago */}
+        <VerificarPagoModal
+          isOpen={isVerificarPagoModalOpen}
+          onClose={() => setIsVerificarPagoModalOpen(false)}
           venta={ventaSeleccionada}
         />
       </div>

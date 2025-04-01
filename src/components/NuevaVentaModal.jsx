@@ -233,8 +233,8 @@ const NuevaVentaModal = ({ isOpen, onClose }) => {
       productos: cart.map((item) => ({
         productoId: item.id, // ID del producto
         cantidad: item.quantity, // Cantidad del producto
-        precioUnitario: item.precioEditado || item.precio, // Precio unitario (editado o original)
-        subtotal: item.quantity * (item.precioEditado || item.precio), // Subtotal del producto
+        precioUnitario: categoriasEspeciales.includes(item.categoria) ? item.precioKilo : item.precioEditado || item.precio, // Usar el precio por kilo o editado
+        subtotal: categoriasEspeciales.includes(item.categoria) ? item.precioKilo : item.quantity * (item.precioEditado || item.precio), // Subtotal del producto
       })),
       total: total, // Total de la venta
       estadoPago: estadoPago, // Estado de pago (Pagado, Pendiente, Parcial)

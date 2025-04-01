@@ -23,12 +23,17 @@ const ProductosModal = ({ isOpen, onClose, venta }) => {
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             <strong>Cliente:</strong> {venta?.cliente}
           </p>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            <strong>Total:</strong> S/ {venta?.total.toFixed(2)}
-          </p>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            <strong>Pendiente:</strong> S/ {venta?.montoPendiente.toFixed(2)}
-          </p>
+          
+          {/* Conditional rendering for payment status */}
+          {venta?.montoPendiente.toFixed(2) === '0.00' ? (
+            <div className="inline-block bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-300">
+              Pagado
+            </div>
+          ) : (
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              <strong>Pendiente:</strong> <span className="text-red-600 font-bold text-lg">S/ {venta?.montoPendiente.toFixed(2)}</span>
+            </p>
+          )}
         </div>
 
         {/* Lista de productos */}
@@ -53,8 +58,12 @@ const ProductosModal = ({ isOpen, onClose, venta }) => {
           )}
         </div>
 
-        {/* Botón de cierre */}
+        {/* Total y Botón de cierre */}
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-gray-700 dark:text-gray-300 font-medium">Total</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">S/ {venta?.total.toFixed(2)}</span>
+          </div>
           <button
             onClick={onClose}
             className="w-full bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 text-white py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg"

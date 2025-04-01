@@ -29,7 +29,7 @@ export function VentaProvider({ children }) {
       }
     } catch (error) {
       console.error("Error al obtener el cliente:", error);
-      return "Anonimo";
+      return "Anónimo";
     }
   };
 
@@ -54,7 +54,7 @@ export function VentaProvider({ children }) {
   const obtenerDatosVentas = async (ventasData) => {
     const ventasTransformadas = await Promise.all(
       ventasData.map(async (venta) => {
-        const nombreCliente = await getNombreCliente(venta.clienteId); // Obtener el nombre del cliente
+        const nombreCliente = venta.clienteId ? await getNombreCliente(venta.clienteId) : "Cliente Anónimo"; // Obtener el nombre del cliente si no es anónimo
 
         // Obtener los detalles de los productos
         const productosTransformados = await Promise.all(
@@ -63,7 +63,7 @@ export function VentaProvider({ children }) {
             return {
               ...producto,
               nombre: detallesProducto?.nombre || "Producto no encontrado", // Nombre del producto
-              precioUnitario: detallesProducto?.precio || producto.precioUnitario, // Precio unitario
+              precioUnitario: producto.precioUnitario, // Usar el precio unitario de la venta
             };
           })
         );
@@ -157,12 +157,49 @@ export function VentaProvider({ children }) {
     }
   };
 
+  // Función para pagar la deuda pendiente de una venta
+  const pagarDeuda = async (ventaId, montoPagado) => {
+    try {
+      const ventaRef = doc(db, "ventas", ventaId); // Referencia a la venta
+      const ventaDoc = await getDoc(ventaRef); // Obtener el documento de la venta
+
+      if (ventaDoc.exists()) {
+        const ventaData = ventaDoc.data();
+        const montoPendienteActual = ventaData.montoPendiente;
+        const nuevoMontoPendiente = montoPendienteActual - montoPagado;
+
+        let nuevoEstadoPago;
+        if (nuevoMontoPendiente <= 0) {
+          nuevoEstadoPago = "Pagado";
+        } else if (ventaData.estadoPago === "Pendiente") {
+          nuevoEstadoPago = "Parcial";
+        } else {
+          nuevoEstadoPago = ventaData.estadoPago;
+        }
+
+        // Actualizar el estado de la venta en Firestore
+        await updateDoc(ventaRef, {
+          montoPendiente: nuevoMontoPendiente >= 0 ? nuevoMontoPendiente : 0,
+          estadoPago: nuevoEstadoPago,
+        });
+
+        console.log("Deuda actualizada correctamente.");
+      } else {
+        throw new Error(`Venta con ID ${ventaId} no encontrada.`);
+      }
+    } catch (error) {
+      console.error("Error al actualizar la deuda:", error);
+      throw error;
+    }
+  };
+
   // Valor del contexto
   const value = {
     ventas, // Lista de ventas transformadas
     loading, // Estado de carga
     addVenta, // Función para agregar una venta
     deleteVenta, // Función para eliminar una venta
+    pagarDeuda, // Función para pagar la deuda
   };
 
   return (
