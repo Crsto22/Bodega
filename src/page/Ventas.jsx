@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Search, Eye, Calendar, Filter, CheckCircle } from "lucide-react";
+import { PlusCircle, Trash2, Search, Eye, Calendar, Filter, CheckCircle, DollarSign, Users, CreditCard } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import NuevaVentaModal from "../components/NuevaVentaModal";
 import EliminarVentaModal from "../components/EliminarVentaModal";
 import ProductosModal from "../components/ProductosModal";
-import VerificarPagoModal from "../components/VerificarPagoModal"; // Nuevo componente
+import VerificarPagoModal from "../components/VerificarPagoModal";
 import { useVenta } from "../context/VentaContext";
 
 const Ventas = () => {
@@ -12,7 +12,7 @@ const Ventas = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProductosModalOpen, setIsProductosModalOpen] = useState(false);
   const [isEliminarModalOpen, setIsEliminarModalOpen] = useState(false);
-  const [isVerificarPagoModalOpen, setIsVerificarPagoModalOpen] = useState(false); // Nuevo estado
+  const [isVerificarPagoModalOpen, setIsVerificarPagoModalOpen] = useState(false);
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const { ventas, loading, deleteVenta } = useVenta();
 
@@ -43,52 +43,71 @@ const Ventas = () => {
 
   // Función mejorada para comprobar si una fecha es hoy
   const esFechaHoy = (fecha) => {
-    // Get today's date at midnight (remove time component)
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    // Parse the input date
     let fechaObj;
 
-    // Handle DD/MM/YYYY format
     if (fecha.includes('/')) {
       const [dia, mes, año] = fecha.split('/').map(part => parseInt(part, 10));
-      fechaObj = new Date(año, mes - 1, dia); // Note: months are 0-indexed in JS Date
+      fechaObj = new Date(año, mes - 1, dia);
     }
-    // Handle YYYY-MM-DD format
     else if (fecha.includes('-')) {
       const [año, mes, dia] = fecha.split('-').map(part => parseInt(part, 10));
       fechaObj = new Date(año, mes - 1, dia);
     }
-    // If parsing failed, return false
+    
     if (!fechaObj || isNaN(fechaObj.getTime())) {
       return false;
     }
 
-    // Remove time component for comparison
     fechaObj.setHours(0, 0, 0, 0);
-
-    // Compare the dates
     return fechaObj.getTime() === hoy.getTime();
   };
 
   // Filtrar ventas según la búsqueda, el filtro de fecha y el filtro de estado
   const ventasFiltradas = ventas.filter((venta) => {
-    // Filtro por búsqueda
     const coincideBusqueda =
       venta.cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
       venta.estado.toLowerCase().includes(busqueda.toLowerCase()) ||
       venta.fecha.includes(busqueda);
 
-    // Filtro por fecha
     const coincideFecha = filtroFecha === "hoy" ? esFechaHoy(venta.fecha) : true;
-
-    // Filtro por estado
     const coincideEstado = filtroEstado === "todos" || venta.estado.toLowerCase() === filtroEstado.toLowerCase();
 
-    // Combinar todos los filtros
     return coincideBusqueda && coincideFecha && coincideEstado;
   });
+
+  // Cálculos para las tarjetas de resumen
+  const calcularResumen = () => {
+    const ventasAConsiderar = ventas.filter(venta => 
+      filtroFecha === "hoy" ? esFechaHoy(venta.fecha) : true
+    );
+
+    const totalVentas = ventasAConsiderar.reduce((sum, venta) => sum + venta.total, 0);
+    
+    const clientesConDeuda = new Set();
+    ventasAConsiderar.forEach(venta => {
+      if (venta.estado.toLowerCase() === "pendiente" || venta.estado.toLowerCase() === "parcial") {
+        clientesConDeuda.add(venta.cliente);
+      }
+    });
+    
+    const totalPendiente = ventasAConsiderar.reduce((sum, venta) => {
+      if (venta.estado.toLowerCase() === "pendiente" || venta.estado.toLowerCase() === "parcial") {
+        return sum + venta.montoPendiente;
+      }
+      return sum;
+    }, 0);
+    
+    return {
+      totalVentas,
+      clientesConDeuda: clientesConDeuda.size,
+      totalPendiente
+    };
+  };
+
+  const resumen = calcularResumen();
 
   // Cerrar el dropdown de filtro cuando se hace clic fuera de él
   useEffect(() => {
@@ -108,13 +127,13 @@ const Ventas = () => {
   const getEstadoColor = (estado) => {
     switch (estado.toLowerCase()) {
       case "pagado":
-        return "from-green-500 to-emerald-600"; // Fondo verde para "Pagado"
+        return "from-green-500 to-emerald-600";
       case "pendiente":
-        return "from-red-500 to-rose-600"; // Fondo rojo para "Pendiente"
+        return "from-red-500 to-rose-600";
       case "parcial":
-        return "from-yellow-500 to-amber-600"; // Fondo amarillo para "Parcial"
+        return "from-yellow-500 to-amber-600";
       default:
-        return "from-gray-500 to-gray-600"; // Fondo gris por defecto
+        return "from-gray-500 to-gray-600";
     }
   };
 
@@ -134,8 +153,8 @@ const Ventas = () => {
 
   // Función para abrir el modal de productos
   const verProductos = (venta) => {
-    setVentaSeleccionada(venta); // Guardar la venta seleccionada
-    setIsProductosModalOpen(true); // Abrir el modal
+    setVentaSeleccionada(venta);
+    setIsProductosModalOpen(true);
   };
 
   // Función para abrir el modal de eliminación
@@ -160,14 +179,173 @@ const Ventas = () => {
     }
   };
 
-  // Si está cargando, mostrar un mensaje de carga
+  // Componente de esqueleto para las tarjetas de resumen
+  const SkeletonCard = () => (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse">
+      <div className="p-5">
+        <div className="flex items-center justify-between">
+          <div className="h-5 bg-gray-200 rounded w-1/3"></div>
+          <div className="p-2 bg-gray-200 rounded-lg h-8 w-8"></div>
+        </div>
+        <div className="mt-4">
+          <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Componente de esqueleto para las filas de la tabla
+  const SkeletonTableRow = () => (
+    <tr>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-12"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-20"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-32"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-8"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-16"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-16"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-center">
+        <div className="flex gap-2 justify-center">
+          <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+          <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+          <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+        </div>
+      </td>
+    </tr>
+  );
+
+  // Componente de esqueleto para las tarjetas de venta (móvil)
+  const SkeletonVentaCard = () => (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse">
+      <div className="p-4 flex items-center space-x-3 border-b">
+        <div className="flex-1">
+          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div className="flex justify-between items-center mt-1">
+            <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+            <div className="h-5 bg-gray-200 rounded w-16"></div>
+          </div>
+        </div>
+      </div>
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <div className="h-3 bg-gray-200 rounded w-12 mb-1"></div>
+            <div className="h-4 bg-gray-200 rounded w-20"></div>
+          </div>
+          <div>
+            <div className="h-3 bg-gray-200 rounded w-16 mb-1"></div>
+            <div className="h-4 bg-gray-200 rounded w-8"></div>
+          </div>
+          <div>
+            <div className="h-3 bg-gray-200 rounded w-8 mb-1"></div>
+            <div className="h-4 bg-gray-200 rounded w-12"></div>
+          </div>
+          <div>
+            <div className="h-3 bg-gray-200 rounded w-18 mb-1"></div>
+            <div className="h-4 bg-gray-200 rounded w-16"></div>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+          <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+          <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Si está cargando, mostrar esqueletos de carga
   if (loading) {
     return (
       <div className="flex">
         <Sidebar updateSidebarWidth={setSidebarWidth} />
         <div className={`flex-grow p-4 md:p-8 transition-all duration-300 ${sidebarWidth === "w-64" ? "ml-72" : "ml-16"}`}>
-          <div className="flex items-center justify-center h-screen">
-            <p className="text-gray-500">Cargando ventas...</p>
+          {/* Encabezado */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+            <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
+            <div className="h-10 bg-gray-200 rounded-full w-36 animate-pulse"></div>
+          </div>
+
+          {/* Tarjetas de Resumen con Esqueleto */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+
+          {/* Barra de búsqueda y botones de filtro */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6 animate-pulse">
+            <div className="relative flex-1">
+              <div className="h-12 bg-gray-200 rounded-xl w-full"></div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <div className="h-12 bg-gray-200 rounded-xl w-32"></div>
+              <div className="h-12 bg-gray-200 rounded-xl w-32"></div>
+              <div className="h-12 bg-gray-200 rounded-xl w-24"></div>
+            </div>
+          </div>
+
+          {/* Esqueleto de la tabla para desktop */}
+          <div className="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-6 py-4 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-8"></div>
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-12"></div>
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-12"></div>
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </th>
+                    <th className="px-6 py-4 text-center">
+                      <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {Array(6).fill().map((_, index) => (
+                    <SkeletonTableRow key={index} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Esqueleto de tarjetas para móvil */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-4 mb-6">
+            {Array(4).fill().map((_, index) => (
+              <SkeletonVentaCard key={index} />
+            ))}
           </div>
         </div>
       </div>
@@ -182,12 +360,69 @@ const Ventas = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
           <h1 className="text-2xl font-bold text-gray-800">Panel de Ventas</h1>
           <button
-            onClick={() => setIsModalOpen(true)} // Abre el modal de nueva venta
+            onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-full shadow-md transition-all"
           >
             <PlusCircle size={18} />
             <span>Nueva Venta</span>
           </button>
+        </div>
+
+        {/* Tarjetas de Resumen */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {/* Tarjeta 1: Total de Ventas */}
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium opacity-90">Total de Ventas</h3>
+                <div className="p-2 bg-white bg-opacity-30 rounded-lg">
+                  <DollarSign size={20} />
+                </div>
+              </div>
+              <div className="mt-4">
+                <h2 className="text-3xl font-bold">S/ {resumen.totalVentas.toFixed(2)}</h2>
+                <p className="text-sm mt-1 opacity-80">
+                  {filtroFecha === "hoy" ? "Hoy" : "Todas las fechas"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tarjeta 2: Clientes con Deuda */}
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium opacity-90">Clientes con Deuda</h3>
+                <div className="p-2 bg-white bg-opacity-30 rounded-lg">
+                  <Users size={20} />
+                </div>
+              </div>
+              <div className="mt-4">
+                <h2 className="text-3xl font-bold">{resumen.clientesConDeuda}</h2>
+                <p className="text-sm mt-1 opacity-80">
+                  {filtroFecha === "hoy" ? "Hoy" : "Todas las fechas"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tarjeta 3: Total Pendiente por Cobrar */}
+          <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium opacity-90">Total por Cobrar</h3>
+                <div className="p-2 bg-white bg-opacity-30 rounded-lg">
+                  <CreditCard size={20} />
+                </div>
+              </div>
+              <div className="mt-4">
+                <h2 className="text-3xl font-bold">S/ {resumen.totalPendiente.toFixed(2)}</h2>
+                <p className="text-sm mt-1 opacity-80">
+                  Estados pendiente y parcial
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Barra de búsqueda y botones de filtro */}
@@ -335,14 +570,14 @@ const Ventas = () => {
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => verProductos(venta)} // Ver productos
+                    onClick={() => verProductos(venta)}
                     className="flex-1 py-2 px-3 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium text-sm flex items-center justify-center gap-1"
                   >
                     <Eye size={16} />
                     <span>Ver</span>
                   </button>
                   <button
-                    onClick={() => abrirModalEliminar(venta)} // Abrir modal de eliminación
+                    onClick={() => abrirModalEliminar(venta)}
                     className="flex-1 py-2 px-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm flex items-center justify-center gap-1"
                   >
                     <Trash2 size={16} />
@@ -350,7 +585,7 @@ const Ventas = () => {
                   </button>
                   {(venta.estado.toLowerCase() === "pendiente" || venta.estado.toLowerCase() === "parcial") && (
                     <button
-                      onClick={() => abrirModalVerificarPago(venta)} // Abrir modal de verificación de pago
+                      onClick={() => abrirModalVerificarPago(venta)}
                       className="flex-1 py-2 px-3 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-medium text-sm flex items-center justify-center gap-1"
                     >
                       <CheckCircle size={16} />
@@ -400,20 +635,20 @@ const Ventas = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex gap-2 justify-center">
                         <button
-                          onClick={() => verProductos(venta)} // Ver productos
+                          onClick={() => verProductos(venta)}
                           className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors"
                         >
                           <Eye size={16} />
                         </button>
                         <button
-                          onClick={() => abrirModalEliminar(venta)} // Abrir modal de eliminación
+                          onClick={() => abrirModalEliminar(venta)}
                           className="text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
                         {(venta.estado.toLowerCase() === "pendiente" || venta.estado.toLowerCase() === "parcial") && (
                           <button
-                            onClick={() => abrirModalVerificarPago(venta)} // Abrir modal de verificación de pago
+                            onClick={() => abrirModalVerificarPago(venta)}
                             className="text-green-600 bg-green-50 hover:bg-green-100 p-2 rounded-lg transition-colors"
                           >
                             <CheckCircle size={16} />
@@ -450,7 +685,7 @@ const Ventas = () => {
         {/* Modal de Nueva Venta */}
         <NuevaVentaModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)} // Cierra el modal
+          onClose={() => setIsModalOpen(false)}
         />
 
         {/* Modal de Productos */}
