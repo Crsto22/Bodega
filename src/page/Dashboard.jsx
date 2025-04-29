@@ -46,65 +46,75 @@ const Dashboard = () => {
       icon: <ShoppingCart size={20} className="text-white" />,
       path: "/ventas",
       description: "Gestión de ventas y transacciones",
-      bgColor: "bg-gradient-to-br from-green-500 to-green-600",
+      bgColor: "bg-gradient-to-br from-green-400 to-green-600",
       iconBg: "bg-green-700",
-      hiddenOnMobile: true // Nueva propiedad para ocultar en móviles
+      hiddenOnMobile: true
     },
     {
       title: "Ventas Móviles",
       icon: <Smartphone size={20} className="text-white" />,
       path: "/ventasMovile",
-      description: "Ventas optimizadas para dispositivos móviles",
-      bgColor: "bg-gradient-to-br from-emerald-500 to-emerald-600",
+      description: "Ventas optimizadas para móviles",
+      bgColor: "bg-gradient-to-br from-emerald-400 to-emerald-600",
       iconBg: "bg-emerald-700",
-      hiddenOnDesktop: true // Nueva propiedad para ocultar en desktop
+      hiddenOnDesktop: true
     },
     {
       title: "Compras",
       icon: <ShoppingBag size={20} className="text-white" />,
       path: "/compras",
-      description: "Administración de compras a proveedores",
-      bgColor: "bg-gradient-to-br from-blue-500 to-blue-600",
+      description: "Administración de compras",
+      bgColor: "bg-gradient-to-br from-blue-400 to-blue-600",
       iconBg: "bg-blue-700"
     },
     {
       title: "Productos",
       icon: <Package size={20} className="text-white" />,
       path: "/productos",
-      description: "Inventario y gestión de productos",
-      bgColor: "bg-gradient-to-br from-purple-500 to-purple-600",
-      iconBg: "bg-purple-700"
+      description: "Inventario y catálogo",
+      bgColor: "bg-gradient-to-br from-purple-400 to-purple-600",
+      iconBg: "bg-purple-700",
+      hiddenOnMobile: true // Ocultar en móviles (mostrar la versión móvil)
+    },
+    {
+      title: "Productos Móviles",
+      icon: <Smartphone size={20} className="text-white" />,
+      path: "/productosMovile",
+      description: "Gestión de productos en móvil",
+      bgColor: "bg-gradient-to-br from-violet-400 to-violet-600",
+      iconBg: "bg-violet-700",
+      hiddenOnDesktop: true // Ocultar en desktop
     },
     {
       title: "Clientes",
       icon: <Users size={20} className="text-white" />,
       path: "/clientes",
-      description: "Registro y seguimiento de clientes",
-      bgColor: "bg-gradient-to-br from-amber-500 to-amber-600",
+      description: "Registro y seguimiento",
+      bgColor: "bg-gradient-to-br from-amber-400 to-amber-600",
       iconBg: "bg-amber-700"
     },
     {
       title: "Proveedores",
       icon: <Truck size={20} className="text-white" />,
       path: "/proveedores",
-      description: "Gestión de proveedores y contactos",
-      bgColor: "bg-gradient-to-br from-indigo-500 to-indigo-600",
+      description: "Gestión de proveedores",
+      bgColor: "bg-gradient-to-br from-indigo-400 to-indigo-600",
       iconBg: "bg-indigo-700"
     },
     {
       title: "Reportes",
       icon: <BarChart3 size={20} className="text-white" />,
       path: "/reportes",
-      description: "Análisis y reportes de negocio",
-      bgColor: "bg-gradient-to-br from-teal-500 to-teal-600",
+      description: "Análisis y estadísticas",
+      bgColor: "bg-gradient-to-br from-teal-400 to-teal-600",
       iconBg: "bg-teal-700"
     },
     {
       title: "Facturación",
       icon: <FileText size={20} className="text-white" />,
       path: "/facturacion",
-      description: "Gestión de facturas y documentos",
-      bgColor: "bg-gradient-to-br from-rose-500 to-rose-600",
+      description: "Gestión de facturas",
+      bgColor: "bg-gradient-to-br from-rose-400 to-rose-600",
       iconBg: "bg-rose-700"
     },
     {
@@ -112,49 +122,50 @@ const Dashboard = () => {
       icon: <Settings size={20} className="text-white" />,
       path: "/configuracion",
       description: "Ajustes del sistema",
-      bgColor: "bg-gradient-to-br from-gray-500 to-gray-600",
+      bgColor: "bg-gradient-to-br from-gray-400 to-gray-600",
       iconBg: "bg-gray-700"
     }
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Mostrar sidebar solo en pantallas grandes */}
       {!isMobile && <Sidebar updateSidebarWidth={updateSidebarWidth} />}
       
       <div className={`flex-grow p-3 md:p-6 transition-all duration-300 ${!isMobile ? (sidebarWidth === 'w-64' ? 'md:ml-72' : 'md:ml-16') : 'ml-0'}`}>
-        {/* Encabezado */}
-        <div className="mb-4 md:mb-6">
-          <h1 className="text-xl md:text-3xl font-bold text-gray-800">Panel de Control</h1>
-          <p className="text-xs md:text-base text-gray-600">Acceso rápido a todas las secciones del sistema</p>
+        {/* Encabezado con fondo suave */}
+        <div className="mb-4 md:mb-8 p-4 bg-white rounded-xl shadow-sm">
+          <h1 className="text-xl md:text-3xl font-bold text-gray-800 mb-1">Panel de Control</h1>
+          <p className="text-xs md:text-sm text-gray-500">Acceso rápido a todas las secciones del sistema</p>
         </div>
 
         {/* Cards de acceso rápido con diseño móvil adaptable */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5">
           {routeCards.map((card, index) => (
             <Link 
               to={card.path} 
               key={index}
               className={`group ${card.hiddenOnMobile ? 'hidden lg:block' : ''} ${card.hiddenOnDesktop ? 'lg:hidden' : ''}`}
             >
-              <div className={`${card.bgColor} rounded-lg md:rounded-xl overflow-hidden shadow hover:shadow-lg transition-all duration-300 group-hover:scale-[1.02] h-full relative`}>
-                {/* Círculo decorativo */}
-                <div className="absolute -top-6 -right-6 w-16 h-16 md:w-24 md:h-24 rounded-full bg-white/10 blur-xl"></div>
+              <div className={`${card.bgColor} rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 group-hover:scale-[1.02] h-full relative`}>
+                {/* Decoración */}
+                <div className="absolute -top-6 -right-6 w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 blur-xl"></div>
+                <div className="absolute -bottom-8 -left-8 w-20 h-20 rounded-full bg-black/5 blur-xl"></div>
                 
                 {/* Contenido de la tarjeta */}
-                <div className="p-3 md:p-5 relative z-10">
-                  <div className="flex items-start mb-2 md:mb-4">
-                    <div className={`${card.iconBg} p-2 md:p-3 rounded-lg md:rounded-xl shadow`}>
+                <div className="p-3 md:p-4 relative z-10">
+                  <div className="flex items-start mb-2 md:mb-3">
+                    <div className={`${card.iconBg} p-2 rounded-lg shadow-inner flex items-center justify-center`}>
                       {card.icon}
                     </div>
-                    <div className="ml-2 md:ml-4">
-                      <h3 className="text-sm md:text-lg font-bold text-white">{card.title}</h3>
-                      <p className="text-white/80 text-xs md:text-sm mt-0.5 md:mt-1">{card.description}</p>
+                    <div className="ml-2 md:ml-3">
+                      <h3 className="text-sm md:text-base font-bold text-white">{card.title}</h3>
+                      <p className="text-white/80 text-xs mt-0.5 line-clamp-2">{card.description}</p>
                     </div>
                   </div>
                   
-                  <div className="mt-2 md:mt-4 flex items-center justify-end">
-                    <span className="text-xs md:text-sm font-medium text-white/90 group-hover:text-white flex items-center transition-colors">
+                  <div className="mt-2 md:mt-3 flex items-center justify-end">
+                    <span className="text-xs font-medium text-white/90 group-hover:text-white flex items-center transition-colors">
                       Acceder <ChevronRight size={14} className="ml-1 group-hover:ml-2 transition-all" />
                     </span>
                   </div>
@@ -164,8 +175,10 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Espacio adicional al final */}
-        <div className="mt-6 md:mt-12"></div>
+        {/* Espacio adicional al final y footer */}
+        <div className="mt-8 md:mt-12 text-center text-xs text-gray-400 p-4">
+          © {new Date().getFullYear()} Sistema de Gestión
+        </div>
       </div>
     </div>
   );

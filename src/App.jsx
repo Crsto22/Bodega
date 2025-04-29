@@ -12,6 +12,7 @@ import Ventas from './page/Ventas';
 import Clientes from './page/Clientes';
 import Proveedores from './page/Proveedores';
 import VentasMovile from './page/VentasMovile';
+import ProductosMovile from './page/ProductosMovile';
 // Componente para proteger rutas
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAuth(); // Obtener el usuario actual del contexto
@@ -70,6 +71,16 @@ function App() {
               <ProtectedRoute>
                 <ProductProvider> {/* Proveer el contexto de productos solo en esta ruta */}
                   <Productos />
+                </ProductProvider>
+              </ProtectedRoute>
+            }
+          />
+            <Route
+            path="/productosMovile"
+            element={
+              <ProtectedRoute>
+                <ProductProvider> {/* Proveer el contexto de productos solo en esta ruta */}
+                  <ProductosMovile />
                 </ProductProvider>
               </ProtectedRoute>
             }
