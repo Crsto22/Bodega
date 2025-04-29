@@ -1,5 +1,15 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  writeBatch
+} from "firebase/firestore";
 import { app } from "../firebase/firebase"; // Importar la instancia de Firebase
 
 // Crear el contexto
@@ -14,39 +24,101 @@ export function useVenta() {
 export function VentaProvider({ children }) {
   const [ventas, setVentas] = useState([]); // Estado para almacenar las ventas
   const [loading, setLoading] = useState(true); // Estado de carga
+  const [error, setError] = useState(null); // Estado para manejar errores
   const db = getFirestore(app); // Obtener la instancia de Firestore
 
+  const [clientesCache, setClientesCache] = useState({}); // Cache para clientes
+  const [productosCache, setProductosCache] = useState({}); // Cache para productos
+
   // Función para obtener el nombre de un cliente por su ID
-  const getNombreCliente = async (clienteId) => {
+  const getNombreCliente = useCallback(async (clienteId) => {
+    if (!clienteId) return "Consumidor Final";
+
+    if (clientesCache[clienteId]) {
+      return clientesCache[clienteId];
+    }
+
     try {
       const clienteRef = doc(db, "clientes", clienteId); // Referencia al documento del cliente
       const clienteDoc = await getDoc(clienteRef); // Obtener el documento
+
       if (clienteDoc.exists()) {
-        return clienteDoc.data().nombre; // Retornar el nombre del cliente
-      } else {
-        console.error("Cliente no encontrado:", clienteId);
-        return "Cliente no encontrado";
+        const nombre = clienteDoc.data().nombre;
+        setClientesCache(prev => ({ ...prev, [clienteId]: nombre }));
+        return nombre;
       }
+      return "Cliente no encontrado";
     } catch (error) {
-      console.error("Error al obtener el cliente:", error);
-      return "Anónimo";
+      console.error("Error al obtener cliente:", error);
+      return "Error al cargar";
     }
-  };
+  }, [db, clientesCache]);
 
   // Función para obtener los detalles de un producto por su ID
-  const getDetallesProducto = async (productoId) => {
+  const getDetallesProducto = useCallback(async (productoId) => {
+    if (productosCache[productoId]) {
+      return productosCache[productoId];
+    }
+
     try {
       const productoRef = doc(db, "productos", productoId); // Referencia al documento del producto
       const productoDoc = await getDoc(productoRef); // Obtener el documento
+
       if (productoDoc.exists()) {
-        return productoDoc.data(); // Retornar los datos del producto
-      } else {
-        console.error("Producto no encontrado:", productoId);
-        return null;
+        const datos = productoDoc.data();
+        setProductosCache(prev => ({ ...prev, [productoId]: datos }));
+        return datos;
       }
-    } catch (error) {
-      console.error("Error al obtener el producto:", error);
       return null;
+    } catch (error) {
+      console.error("Error al obtener producto:", error);
+      return null;
+    }
+  }, [db, productosCache]);
+
+  // Función para transformar los datos de una venta individual
+  const transformarVentaIndividual = async (venta) => {
+    try {
+      const ventaBase = {
+        id: venta.id || '',
+        cliente: "Consumidor Final",
+        clienteId: venta.clienteId || null,
+        productos: venta.productos || [],
+        total: venta.total || 0,
+        estadoPago: venta.estadoPago || 'Pagado',
+        fecha: venta.fecha || new Date().toISOString(),
+        montoPendiente: venta.montoPendiente || 0,
+      };
+
+      if (venta.clienteId) {
+        ventaBase.cliente = await getNombreCliente(venta.clienteId);
+      }
+
+      ventaBase.productos = await Promise.all(
+        ventaBase.productos.map(async (producto) => {
+          const detalles = await getDetallesProducto(producto.productoId);
+          return {
+            nombre: detalles?.nombre || "Producto no encontrado",
+            cantidad: producto.cantidad || 0,
+            precioUnitario: producto.precioUnitario || 0,
+            productoId: producto.productoId || '',
+            subtotal: producto.subtotal || (producto.cantidad * producto.precioUnitario) || 0
+          };
+        })
+      );
+
+      return ventaBase;
+    } catch (error) {
+      console.error("Error transformando venta:", error);
+      return {
+        id: venta.id || '',
+        cliente: "Consumidor Final",
+        productos: [],
+        total: 0,
+        estadoPago: 'Pagado',
+        fecha: new Date().toISOString(),
+        montoPendiente: 0,
+      };
     }
   };
 
@@ -55,7 +127,7 @@ export function VentaProvider({ children }) {
     const ventasTransformadas = await Promise.all(
       ventasData.map(async (venta) => {
         const nombreCliente = venta.clienteId ? await getNombreCliente(venta.clienteId) : "Cliente Anónimo";
-  
+
         const productosTransformados = await Promise.all(
           venta.productos.map(async (producto) => {
             const detallesProducto = await getDetallesProducto(producto.productoId);
@@ -66,7 +138,7 @@ export function VentaProvider({ children }) {
             };
           })
         );
-  
+
         return {
           id: venta.id, // ID de Firestore
           cliente: nombreCliente,
@@ -106,6 +178,7 @@ export function VentaProvider({ children }) {
   // Función para agregar una venta y disminuir el stock de los productos
   const addVenta = async (venta) => {
     try {
+      const batch = writeBatch(db);
       const ventasCollection = collection(db, "ventas"); // Referencia a la colección de ventas
       const productosCollection = collection(db, "productos"); // Referencia a la colección de productos
 
@@ -117,32 +190,63 @@ export function VentaProvider({ children }) {
         }
       }
 
-      // Disminuir el stock de cada producto vendido
+      // Verificar que los productos existan y tengan stock suficiente
       for (const productoVenta of venta.productos) {
         const productoRef = doc(productosCollection, productoVenta.productoId); // Referencia al producto
         const productoDoc = await getDoc(productoRef); // Obtener el documento del producto
 
-        if (productoDoc.exists()) {
-          const productoData = productoDoc.data();
-          const nuevoStock = productoData.stock - productoVenta.cantidad; // Calcular el nuevo stock
+        if (!productoDoc.exists()) {
+          throw new Error(`Producto ${productoVenta.productoId} no existe`);
+        }
 
-          if (nuevoStock < 0) {
-            throw new Error(`No hay suficiente stock para el producto ${productoData.nombre}.`);
-          }
-
-          // Actualizar el stock del producto en Firestore
-          await updateDoc(productoRef, { stock: nuevoStock });
-        } else {
-          throw new Error(`Producto con ID ${productoVenta.productoId} no encontrado.`);
+        const productoData = productoDoc.data();
+        if (productoData.stock < productoVenta.cantidad) {
+          throw new Error(`Stock insuficiente para ${productoData.nombre}`);
         }
       }
 
+      // Disminuir el stock de cada producto vendido
+      for (const productoVenta of venta.productos) {
+        const productoRef = doc(productosCollection, productoVenta.productoId); // Referencia al producto
+        const productoDoc = await getDoc(productoRef); // Obtener el documento del producto
+        const nuevoStock = productoDoc.data().stock - productoVenta.cantidad; // Calcular el nuevo stock
+        batch.update(productoRef, { stock: nuevoStock });
+      }
+
       // Agregar la venta a Firestore
-      await addDoc(ventasCollection, venta);
-      console.log("Venta agregada correctamente y stock actualizado.");
+      const ventaRef = doc(ventasCollection);
+      batch.set(ventaRef, venta);
+      await batch.commit();
+
+      const ventaSnapshot = await getDoc(ventaRef);
+
+      if (!ventaSnapshot.exists()) {
+        throw new Error("No se pudo crear la venta");
+      }
+
+      const ventaCompleta = {
+        id: ventaSnapshot.id,
+        ...ventaSnapshot.data(),
+        productos: ventaSnapshot.data().productos || venta.productos,
+        total: ventaSnapshot.data().total || venta.total,
+        montoPendiente: ventaSnapshot.data().montoPendiente ||
+          (venta.estadoPago === 'Parcial' ?
+            (venta.total - (venta.adelanto || 0)) :
+            (venta.estadoPago === 'Pendiente' ? venta.total : 0))
+      };
+
+      const ventaTransformada = await transformarVentaIndividual(ventaCompleta);
+
+      return {
+        success: true,
+        venta: {
+          ...ventaTransformada,
+          fechaFormateada: new Date(ventaCompleta.fecha).toLocaleString(),
+        }
+      };
     } catch (error) {
       console.error("Error al agregar la venta:", error);
-      throw error; // Relanzar el error para manejarlo en el componente
+      throw error;
     }
   };
 
@@ -198,9 +302,11 @@ export function VentaProvider({ children }) {
   const value = {
     ventas, // Lista de ventas transformadas
     loading, // Estado de carga
+    error, // Estado de error
     addVenta, // Función para agregar una venta
     deleteVenta, // Función para eliminar una venta
     pagarDeuda, // Función para pagar la deuda
+    transformarVentaIndividual // Función para transformar una venta individual
   };
 
   return (
