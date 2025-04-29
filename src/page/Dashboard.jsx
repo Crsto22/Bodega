@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import {
   ShoppingCart,
@@ -16,9 +16,28 @@ import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const [sidebarWidth, setSidebarWidth] = useState('w-64');
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Función para actualizar el ancho del sidebar (usado por el componente Sidebar)
   const updateSidebarWidth = (width) => {
     setSidebarWidth(width);
   };
+  
+  // Detectar si es dispositivo móvil
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Verificar inicialmente
+    checkIsMobile();
+    
+    // Agregar listener para cambios de tamaño
+    window.addEventListener('resize', checkIsMobile);
+    
+    // Limpiar listener
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   // Cards de acceso a rutas mejoradas con diseño moderno
   const routeCards = [
@@ -100,9 +119,10 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar updateSidebarWidth={updateSidebarWidth} />
+      {/* Mostrar sidebar solo en pantallas grandes */}
+      {!isMobile && <Sidebar updateSidebarWidth={updateSidebarWidth} />}
       
-      <div className={`flex-grow p-3 md:p-6 transition-all duration-300 ${sidebarWidth === 'w-64' ? 'ml-72' : 'ml-16'}`}>
+      <div className={`flex-grow p-3 md:p-6 transition-all duration-300 ${!isMobile ? (sidebarWidth === 'w-64' ? 'md:ml-72' : 'md:ml-16') : 'ml-0'}`}>
         {/* Encabezado */}
         <div className="mb-4 md:mb-6">
           <h1 className="text-xl md:text-3xl font-bold text-gray-800">Panel de Control</h1>
