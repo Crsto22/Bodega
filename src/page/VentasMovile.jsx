@@ -425,75 +425,103 @@ export default function VentasMovile() {
                             </p>
 
                             {!categoriasEspeciales.includes(item.product.categoria) ? (
-                              <div className="flex justify-between items-center mt-1">
-                                <div className="flex items-center bg-gray-50 rounded-md">
-                                  <button
-                                    onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                                    className="w-18 h-10 flex items-center justify-center"
-                                  >
-                                    <Minus size={22} className="text-gray-700" />
-                                  </button>
-                                  <span className="mx-2 text-sm font-extrabold">{item.quantity}</span>
-                                  <button
-                                    onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                                    className="w-18 h-10 flex items-center justify-center"
-                                    disabled={item.quantity >= item.product.stock}
-                                  >
-                                    <Plus size={22} className={item.quantity >= item.product.stock ? "text-gray-300" : "text-gray-700"} />
-                                  </button>
-                                </div>
+  <div className="flex justify-between items-center mt-1">
+    <div className="flex items-center bg-gray-50 rounded-md">
+      <button
+        onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+        className="w-18 h-10 flex items-center justify-center"
+      >
+        <Minus size={22} className="text-gray-700" />
+      </button>
+      <span className="mx-2 text-sm font-extrabold">{item.quantity}</span>
+      <button
+        onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+        className="w-18 h-10 flex items-center justify-center"
+        disabled={item.quantity >= item.product.stock}
+      >
+        <Plus size={22} className={item.quantity >= item.product.stock ? "text-gray-300" : "text-gray-700"} />
+      </button>
+    </div>
 
-                                <div className="text-right">
-                                  <button
-                                    onClick={() => openPriceEditDrawer(item)}
-                                    className="text-xs text-gray-500 underline mb-1"
-                                  >
-                                    Editar precio
-                                  </button>
-                                  <p className="font-medium text-sm text-[#44943b]">
-                                    {formatPrice(item.subtotal)}
-                                  </p>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mt-1">
-                                <div className="mt-1 text-sm text-gray-600">
-                                  {item.categoria !== "Préstamo" && (
-                                    <div className="flex items-center gap-1">
-                                      <Weight size={14} className="text-gray-500" />
-                                      <span>El precio del kilo está a S/ {item.product.precio.toFixed(2)}</span>
-                                    </div>
-                                  )}
-                                  <div className="mt-2 flex items-center gap-2">
-                                    <div className="relative">
-                                      <span className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-500">S/</span>
-                                      <input
-                                        type="number"
-                                        value={item.precioKilo || ''}
-                                        placeholder="Ingresa el precio"
-                                        onChange={(e) => updatePrecioKilo(item.id, e.target.value)}
-                                        className="w-20 px-2 py-1 border border-gray-300 rounded-lg"
-                                      />
-                                    </div>
-                                    <span className="text-gray-600">Total: S/ {(item.precioKilo || 0).toFixed(2)}</span>
-                                  </div>
-                                </div>
+    <div className="text-right">
+      <button
+        onClick={() => openPriceEditDrawer(item)}
+        className="text-xs text-gray-500 underline mb-1"
+      >
+        Editar precio
+      </button>
+      <p className="font-medium text-sm text-[#44943b]">
+        {formatPrice(item.subtotal)}
+      </p>
+    </div>
+  </div>
+) : (
+  <div className="mt-1">
+    <div className="mt-1 text-sm text-gray-600">
+      {item.product.categoria !== "Préstamo" && (
+        <div className="flex items-center gap-1 mb-2">
+          <Weight size={14} className="text-gray-500" />
+          <span>Precio referencia: {formatPrice(item.product.precio)}/kg</span>
+        </div>
+      )}
+      
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-xs text-gray-500 block">Precio por kilo</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">S/</span>
+            <input
+              type="number"
+              value={item.precioKilo || item.product.precio.toFixed(2)}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || item.product.precio;
+                updatePrecioKilo(item.id, value);
+                // Actualizar el subtotal automáticamente
+                const kg = item.subtotal / (item.precioKilo || item.product.precio);
+                updateCartItemPrice(item.id, value * kg);
+              }}
+              className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-lg text-sm"
+              step="0.01"
+              min="0"
+            />
+          </div>
+        </div>
 
-                                <div className="flex justify-between items-center">
-                                  <div className="text-xs text-gray-500">
-                                    {item.product.precio > 0 && item.product.categoria !== "Préstamo" && (
-                                      <span>~{(item.subtotal / item.product.precio).toFixed(2)} kg</span>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-xs text-gray-500">Subtotal:</span>
-                                    <p className="font-medium text-sm text-[#44943b]">
-                                      {formatPrice(item.subtotal)}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+        <div className="space-y-1">
+          <label className="text-xs text-gray-500 block">Cantidad (kg)</label>
+          <div className="relative">
+            <input
+              type="number"
+              value={(item.subtotal / (item.precioKilo || item.product.precio)).toFixed(2)}
+              onChange={(e) => {
+                const kg = parseFloat(e.target.value) || 0;
+                const newSubtotal = kg * (item.precioKilo || item.product.precio);
+                updateCartItemPrice(item.id, newSubtotal);
+              }}
+              className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+              step="0.01"
+              min="0"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="mt-3 flex justify-between items-center bg-gray-50 p-2 rounded">
+      <div className="text-xs text-gray-600">
+        {item.product.categoria !== "Préstamo" && (
+          <span>{(item.subtotal / (item.precioKilo || item.product.precio)).toFixed(2)} kg</span>
+        )}
+      </div>
+      <div className="text-right">
+        <span className="text-xs text-gray-500">Subtotal:</span>
+        <p className="font-medium text-sm text-[#44943b]">
+          {formatPrice(item.subtotal)}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
                           </div>
                         ))}
                       </div>
