@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBasket, ShoppingBag, Store, ArrowLeft, Plus, Minus, Search, X, Trash2, AlertTriangle, Check, Weight } from 'lucide-react';
+import { ShoppingBasket, ClipboardList, ShoppingBag, Store, ArrowLeft, Plus, Minus, Search, X, Trash2, AlertTriangle, Check, Weight } from 'lucide-react';
 import Logo from '../img/Logo.png';
 import { useProduct } from '../context/ProductContext';
 import { useCliente } from '../context/ClienteContext';
 import { useVenta } from '../context/VentaContext';
 import FinalizarVentaDrawer from '../components/FinalizarVentaDrawer';
 import TicketDrawer from '../components/TicketDrawer';
-import NuevoProductoDrawer from '../components/NuevoProductoDrawer'; // Importa el nuevo drawer
+import NuevoProductoDrawer from '../components/NuevoProductoDrawer';
 import { Link, useLocation } from 'react-router-dom';
+import HistoryVentasMovile from '../components/HistoryVentasMovile';
 
 export default function VentasMovile() {
   const [activeOption, setActiveOption] = useState('caja');
@@ -31,11 +32,13 @@ export default function VentasMovile() {
   const [status, setStatus] = useState(null);
   const [currentVenta, setCurrentVenta] = useState(null);
   const [showTicket, setShowTicket] = useState(false);
-  const [isNuevoProductoDrawerOpen, setIsNuevoProductoDrawerOpen] = useState(false); // Estado para el nuevo drawer
+  const [isNuevoProductoDrawerOpen, setIsNuevoProductoDrawerOpen] = useState(false);
+  const [ventas, setVentas] = useState([]);
+  const [loadingVentas, setLoadingVentas] = useState(false);
 
   const { products, loading: productLoading } = useProduct();
   const { clientes, loading: clienteLoading, addCliente } = useCliente();
-  const { addVenta } = useVenta();
+  const { addVenta, getVentas } = useVenta();
 
   const categories = [
     'Dulces y Snacks',
@@ -79,6 +82,24 @@ export default function VentasMovile() {
     }
   }, [clientSearchTerm, clientes]);
 
+  useEffect(() => {
+    if (activeOption === 'ventas') {
+      fetchVentas();
+    }
+  }, [activeOption]);
+
+  const fetchVentas = async () => {
+    setLoadingVentas(true);
+    try {
+      const ventasData = await getVentas();
+      setVentas(ventasData);
+    } catch (error) {
+      console.error('Error al obtener ventas:', error);
+    } finally {
+      setLoadingVentas(false);
+    }
+  };
+
   const handleOptionClick = (option) => {
     setActiveOption(option);
   };
@@ -98,6 +119,7 @@ export default function VentasMovile() {
 
     setSelectedProduct(product);
     setQuantity(initialQuantity);
+    setNewUnitPrice(existingItem?.precioUnitario?.toFixed(2) || product.precio.toFixed(2));
     setDrawerOpen(true);
   };
 
@@ -134,7 +156,7 @@ export default function VentasMovile() {
       return product.stock;
     }
 
-    return product.stock;
+    return product.stock - existingItem.quantity;
   };
 
   const startNewSale = () => {
@@ -149,6 +171,10 @@ export default function VentasMovile() {
     }
 
     const isSpecialCategory = selectedProduct && categoriasEspeciales.includes(selectedProduct.categoria);
+    const precioUnitario = isSpecialCategory ? 
+      (parseFloat(newUnitPrice) || selectedProduct.precio) : 
+      selectedProduct.precio;
+    
     const cartQuantity = isSpecialCategory ? 1 : quantity;
 
     if (cartQuantity <= 0 || (isSpecialCategory && cartItems.some(item => item.product.id === selectedProduct.id))) {
@@ -169,10 +195,12 @@ export default function VentasMovile() {
 
     if (existingItemIndex !== -1) {
       const updatedCartItems = [...cartItems];
-      updatedCartItems[existingItemIndex].quantity = cartQuantity;
-      updatedCartItems[existingItemIndex].subtotal = updatedCartItems[existingItemIndex].customPrice
-        ? updatedCartItems[existingItemIndex].customPrice * cartQuantity
-        : updatedCartItems[existingItemIndex].product.precio * cartQuantity;
+      updatedCartItems[existingItemIndex] = {
+        ...updatedCartItems[existingItemIndex],
+        quantity: cartQuantity,
+        precioUnitario: precioUnitario,
+        subtotal: isSpecialCategory ? precioUnitario : precioUnitario * cartQuantity
+      };
 
       setCartItems(updatedCartItems);
     } else {
@@ -180,8 +208,8 @@ export default function VentasMovile() {
         id: Date.now(),
         product: selectedProduct,
         quantity: cartQuantity,
-        subtotal: isSpecialCategory ? selectedProduct.precio : selectedProduct.precio * cartQuantity,
-        customPrice: isSpecialCategory ? null : undefined
+        precioUnitario: precioUnitario,
+        subtotal: isSpecialCategory ? precioUnitario : precioUnitario * cartQuantity
       };
 
       setCartItems(prevItems => [...prevItems, newItem]);
@@ -213,9 +241,7 @@ export default function VentasMovile() {
           ? {
             ...item,
             quantity: newQuantity,
-            subtotal: item.customPrice
-              ? item.customPrice * newQuantity
-              : item.product.precio * newQuantity
+            subtotal: item.precioUnitario * newQuantity
           }
           : item
       )
@@ -229,7 +255,11 @@ export default function VentasMovile() {
     setCartItems(prevItems =>
       prevItems.map(item =>
         item.id === itemId
-          ? { ...item, subtotal: price }
+          ? { 
+              ...item, 
+              precioUnitario: price,
+              subtotal: price * item.quantity
+            }
           : item
       )
     );
@@ -242,7 +272,11 @@ export default function VentasMovile() {
     setCartItems(prevItems =>
       prevItems.map(item =>
         item.id === itemId
-          ? { ...item, precioKilo: precioKilo }
+          ? { 
+              ...item, 
+              precioUnitario: precioKilo,
+              subtotal: precioKilo
+            }
           : item
       )
     );
@@ -254,7 +288,7 @@ export default function VentasMovile() {
     }
 
     setEditingItem(item);
-    setNewUnitPrice(item.customPrice ? item.customPrice.toFixed(2) : item.product.precio.toFixed(2));
+    setNewUnitPrice(item.precioUnitario.toFixed(2));
     setPriceEditDrawerOpen(true);
   };
 
@@ -270,7 +304,7 @@ export default function VentasMovile() {
         item.id === editingItem.id
           ? {
             ...item,
-            customPrice: price,
+            precioUnitario: price,
             subtotal: price * item.quantity
           }
           : item
@@ -322,7 +356,7 @@ export default function VentasMovile() {
       productos: cartItems.map(item => ({
         productoId: item.product.id,
         cantidad: item.quantity,
-        precioUnitario: item.customPrice || item.product.precio,
+        precioUnitario: item.precioUnitario,
         subtotal: item.subtotal
       })),
       total: cartTotal,
@@ -352,6 +386,11 @@ export default function VentasMovile() {
     return `S/ ${Number(price).toFixed(2)}`;
   };
 
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString('es-ES', options);
+  };
+
   const isSpecialCategoryProduct = (product) => {
     return product && categoriasEspeciales.includes(product.categoria);
   };
@@ -360,23 +399,22 @@ export default function VentasMovile() {
     return cartItems.some(item => item.product.id === productId);
   };
 
-  // Resto del código de renderizado (igual que antes)
   return (
     <div className="fixed inset-0 flex flex-col w-full h-full bg-gray-100">
       {/* Capa superior con botón de volver y logo */}
       <div className="absolute top-0 left-0 right-0 flex items-center p-2 z-10">
-  <Link to="/">
-    <button className="p-2 bg-white rounded-full shadow-md cursor-pointer hover:bg-gray-200">
-      <ArrowLeft className="text-gray-700" size={20} />
-    </button>
-  </Link>
-  <div className="flex-1 flex justify-center">
-    <div className="h-12 w-32 rounded-md flex items-center justify-center">
-      <img src={Logo} alt="Logo" className="h-full w-auto" />
-    </div>
-  </div>
-  <div className="w-10"></div>
-</div>
+        <Link to="/">
+          <button className="p-2 bg-white rounded-full shadow-md cursor-pointer hover:bg-gray-200">
+            <ArrowLeft className="text-gray-700" size={20} />
+          </button>
+        </Link>
+        <div className="flex-1 flex justify-center">
+          <div className="h-12 w-32 rounded-md flex items-center justify-center">
+            <img src={Logo} alt="Logo" className="h-full w-auto" />
+          </div>
+        </div>
+        <div className="w-10"></div>
+      </div>
 
       {/* Área de contenido principal */}
       <div className="flex-1 flex flex-col pt-16 px-2 overflow-y-auto">
@@ -416,112 +454,82 @@ export default function VentasMovile() {
                               </button>
                             </div>
 
-                            <p className="text-xs text-gray-500 mb-1">
+                            <p className="text-sm text-gray-500 mb-1">
                               {categoriasEspeciales.includes(item.product.categoria) && item.product.categoria !== "Préstamo"
-                                ? `Ref: ${formatPrice(item.product.precio)}/kg`
-                                : `${formatPrice(item.customPrice || item.product.precio)} c/u`}
+                                ? `Precio por Kilo: ${formatPrice(item.precioUnitario)}/kg`
+                                : ` `}
                               {!categoriasEspeciales.includes(item.product.categoria) &&
                                 <span className="ml-2">(Stock: {item.product.stock})</span>}
                             </p>
 
                             {!categoriasEspeciales.includes(item.product.categoria) ? (
-  <div className="flex justify-between items-center mt-1">
-    <div className="flex items-center bg-gray-50 rounded-md">
-      <button
-        onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-        className="w-18 h-10 flex items-center justify-center"
-      >
-        <Minus size={22} className="text-gray-700" />
-      </button>
-      <span className="mx-2 text-sm font-extrabold">{item.quantity}</span>
-      <button
-        onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-        className="w-18 h-10 flex items-center justify-center"
-        disabled={item.quantity >= item.product.stock}
-      >
-        <Plus size={22} className={item.quantity >= item.product.stock ? "text-gray-300" : "text-gray-700"} />
-      </button>
-    </div>
+                              <div className="flex justify-between items-center mt-1">
+                                <div className="flex items-center bg-gray-50 rounded-md">
+                                  <button
+                                    onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+                                    className="w-18 h-10 flex items-center justify-center"
+                                  >
+                                    <Minus size={22} className="text-gray-700" />
+                                  </button>
+                                  <span className="mx-2 text-sm font-extrabold">{item.quantity}</span>
+                                  <button
+                                    onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+                                    className="w-18 h-10 flex items-center justify-center"
+                                    disabled={item.quantity >= item.product.stock}
+                                  >
+                                    <Plus size={22} className={item.quantity >= item.product.stock ? "text-gray-300" : "text-gray-700"} />
+                                  </button>
+                                </div>
 
-    <div className="text-right">
-      <button
-        onClick={() => openPriceEditDrawer(item)}
-        className="text-xs text-gray-500 underline mb-1"
-      >
-        Editar precio
-      </button>
-      <p className="font-medium text-sm text-[#44943b]">
-        {formatPrice(item.subtotal)}
-      </p>
-    </div>
-  </div>
-) : (
-  <div className="mt-1">
-    <div className="mt-1 text-sm text-gray-600">
-      {item.product.categoria !== "Préstamo" && (
-        <div className="flex items-center gap-1 mb-2">
-          <Weight size={14} className="text-gray-500" />
-          <span>Precio referencia: {formatPrice(item.product.precio)}/kg</span>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs text-gray-500 block">Precio por kilo</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">S/</span>
-            <input
-              type="number"
-              value={item.precioKilo || item.product.precio.toFixed(2)}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value) || item.product.precio;
-                updatePrecioKilo(item.id, value);
-                // Actualizar el subtotal automáticamente
-                const kg = item.subtotal / (item.precioKilo || item.product.precio);
-                updateCartItemPrice(item.id, value * kg);
-              }}
-              className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-lg text-sm"
-              step="0.01"
-              min="0"
-            />
-          </div>
-        </div>
+                                <div className="text-right">
+                                  <button
+                                    onClick={() => openPriceEditDrawer(item)}
+                                    className="text-xs text-gray-500 underline mb-1"
+                                  >
+                                    Editar precio
+                                  </button>
+                                  <p className="font-medium text-sm text-[#44943b]">
+                                    {formatPrice(item.subtotal)}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-1">
+                                <div className="mt-1 text-sm text-gray-600">
+                                  {item.product.categoria !== "Préstamo" && (
+                                    <div className="flex items-center gap-1 mb-2">
+                                     
+                                    </div>
+                                  )}
 
-        <div className="space-y-1">
-          <label className="text-xs text-gray-500 block">Cantidad (kg)</label>
-          <div className="relative">
-            <input
-              type="number"
-              value={(item.subtotal / (item.precioKilo || item.product.precio)).toFixed(2)}
-              onChange={(e) => {
-                const kg = parseFloat(e.target.value) || 0;
-                const newSubtotal = kg * (item.precioKilo || item.product.precio);
-                updateCartItemPrice(item.id, newSubtotal);
-              }}
-              className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
-              step="0.01"
-              min="0"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">S/</span>
+                                    <input
+                                      type="number"
+                                      placeholder={item.precioUnitario.toFixed(2)}
+                                      onChange={(e) => {
+                                        const newPrice = parseFloat(e.target.value) || item.product.precio;
+                                        updatePrecioKilo(item.id, newPrice);
+                                      }}
+                                      className="w-full pl-10 pr-3 py-2 border placeholder-gray-200 border-gray-300 rounded-lg placeholder-gray-500"
+                                      step="0.01"
+                                      min="0"
+                                    />
+                                  </div>
+                                </div>
 
-    <div className="mt-3 flex justify-between items-center bg-gray-50 p-2 rounded">
-      <div className="text-xs text-gray-600">
-        {item.product.categoria !== "Préstamo" && (
-          <span>{(item.subtotal / (item.precioKilo || item.product.precio)).toFixed(2)} kg</span>
-        )}
-      </div>
-      <div className="text-right">
-        <span className="text-xs text-gray-500">Subtotal:</span>
-        <p className="font-medium text-sm text-[#44943b]">
-          {formatPrice(item.subtotal)}
-        </p>
-      </div>
-    </div>
-  </div>
-)}
+                                <div className="mt-2 flex justify-between items-center text-sm">
+                                  <span className="text-gray-500">
+                                  </span>
+                                  <div className="text-right">
+                                    <span className="text-gray-500">Subtotal: </span>
+                                    <span className="font-medium text-[#44943b]">
+                                      {formatPrice(item.subtotal)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -736,14 +744,54 @@ export default function VentasMovile() {
                 ))}
               </div>
             )}
+          </div>
+        )}
 
+        {activeOption === 'ventas' && (
+          <div className="flex flex-col w-full h-full">
+            {loadingVentas ? (
+              <div className="flex justify-center items-center h-full">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#44943b]"></div>
+              </div>
+            ) : ventas.length > 0 ? (
+              <div className="bg-white rounded-lg shadow-sm p-3">
+                <h2 className="font-bold text-lg mb-3">Historial de Ventas</h2>
+                <div className="space-y-3">
+                  {ventas.map((venta) => (
+                    <div key={venta.id} className="border-b border-gray-100 pb-3 last:border-0">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">Venta #{venta.id}</p>
+                          <p className="text-xs text-gray-500">{formatDate(venta.fecha)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-[#44943b]">{formatPrice(venta.total)}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            venta.estadoPago === 'Pagado' ? 'bg-green-100 text-green-800' :
+                            venta.estadoPago === 'Pendiente' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {venta.estadoPago}
+                          </span>
+                        </div>
+                      </div>
+                      {venta.cliente && (
+                        <p className="text-xs mt-1 text-gray-600">Cliente: {venta.cliente.nombre}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <HistoryVentasMovile setActiveOption={setActiveOption} />
+            )}
           </div>
         )}
       </div>
 
       {/* Dock de navegación fijo en la parte inferior */}
       <div className="w-full py-1 px-2">
-        <div className="flex justify-around max-w-xs mx-auto rounded-xl bg-[#44943b] p-1">
+        <div className="flex justify-around max-w-md mx-auto rounded-xl bg-[#44943b] p-1">
           <div className="flex-1">
             <button
               className={`flex flex-col items-center justify-center py-1.5 w-full px-3 rounded-lg transition-all ${activeOption === 'caja' ? 'bg-white shadow-md' : 'hover:bg-gray-400 text-white'}`}
@@ -770,11 +818,21 @@ export default function VentasMovile() {
               <span className="text-xs mt-1">Artículos</span>
             </button>
           </div>
+
+          <div className="flex-1">
+            <button
+              className={`flex flex-col items-center justify-center py-1.5 w-full px-3 rounded-lg transition-all ${activeOption === 'ventas' ? 'bg-white shadow-md' : 'hover:bg-gray-400 text-white'}`}
+              onClick={() => handleOptionClick('ventas')}
+            >
+              <ClipboardList className={activeOption === 'ventas' ? 'text-gray-700' : 'text-white'} size={18} />
+              <span className="text-xs mt-1">Ventas</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Drawer navigation para selección de productos */}
-      {drawerOpen && selectedProduct && (
+      {/* Drawer para productos normales */}
+      {drawerOpen && selectedProduct && !categoriasEspeciales.includes(selectedProduct.categoria) && (
         <div className="fixed inset-0 bg-black/50 bg-opacity-50 z-50 flex items-end transition-all">
           <div className="bg-white w-full rounded-t-xl p-4 transform transition-transform duration-300 animate-slide-up">
             <div className="flex justify-between items-center mb-4">
@@ -794,34 +852,21 @@ export default function VentasMovile() {
 
               <p className="text-lg font-bold text-[#44943b] mt-2">
                 {formatPrice(selectedProduct.precio)}
-                {categoriasEspeciales.includes(selectedProduct.categoria) && selectedProduct.categoria !== "Préstamo" && (
-                  <span className="text-sm ml-1">/kilo</span>
-                )}
               </p>
 
-              {!isSpecialCategoryProduct(selectedProduct) && selectedProduct.categoria !== "Préstamo" && (
+              {selectedProduct.stock <= 0 ? (
+                <p className="text-sm text-red-500 mt-1 font-medium">
+                  No hay stock disponible de este producto.
+                </p>
+              ) : (
                 <p className="text-sm text-gray-600 mt-1">
                   Stock disponible:{" "}
-                  <span className={selectedProduct.stock <= 0 ? 'font-bold text-red-500' : 'font-bold'}>
-                    {selectedProduct.stock}
-                  </span>{" "}
+                  <span className="font-bold">{selectedProduct.stock}</span>{" "}
                   unidades
                 </p>
               )}
 
-              {selectedProduct.categoria === "Préstamo" ? (
-                <p className="text-sm text-blue-600 mt-1">
-                  Este producto corresponde a un <strong>préstamo</strong>. Consulta los términos y condiciones antes de continuar.
-                </p>
-              ) : isSpecialCategoryProduct(selectedProduct) ? (
-                <p className="text-sm text-gray-600 mt-1">
-                  Este producto se vende por kilo. El precio mostrado es por kilo y servirá como referencia.
-                </p>
-              ) : selectedProduct.stock <= 0 ? (
-                <p className="text-sm text-red-500 mt-1 font-medium">
-                  No hay stock disponible de este producto.
-                </p>
-              ) : cartItems.some(item => item.product.id === selectedProduct.id) && (
+              {cartItems.some(item => item.product.id === selectedProduct.id) && (
                 <p className="text-sm text-gray-600 mt-1">
                   Ya tienes{" "}
                   <span className="font-extrabold">
@@ -832,50 +877,38 @@ export default function VentasMovile() {
               )}
             </div>
 
-            {!isSpecialCategoryProduct(selectedProduct) &&
-              selectedProduct.stock > 0 &&
-              selectedProduct.categoria !== "Préstamo" && (
-                <div className="flex items-center justify-center mb-6">
-                  <div className="flex items-center justify-center">
-                    <button
-                      onClick={decreaseQuantity}
-                      className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center"
-                      disabled={quantity <= 0}
-                    >
-                      <Minus size={16} className={quantity <= 0 ? "text-gray-400" : "text-gray-700"} />
-                    </button>
-                    <span className="mx-10 font-bold text-lg">{quantity}</span>
-                    <button
-                      onClick={increaseQuantity}
-                      className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center"
-                      disabled={quantity >= selectedProduct.stock}
-                    >
-                      <Plus size={16} className={quantity >= selectedProduct.stock ? "text-gray-400" : "text-gray-700"} />
-                    </button>
-                  </div>
+            {selectedProduct.stock > 0 && (
+              <div className="flex items-center justify-center mb-6">
+                <div className="flex items-center justify-center">
+                  <button
+                    onClick={decreaseQuantity}
+                    className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center"
+                    disabled={quantity <= 0}
+                  >
+                    <Minus size={16} className={quantity <= 0 ? "text-gray-400" : "text-gray-700"} />
+                  </button>
+                  <span className="mx-10 font-bold text-lg">{quantity}</span>
+                  <button
+                    onClick={increaseQuantity}
+                    className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center"
+                    disabled={quantity >= selectedProduct.stock}
+                  >
+                    <Plus size={16} className={quantity >= selectedProduct.stock ? "text-gray-400" : "text-gray-700"} />
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
             <button
               onClick={addToCart}
-              className={`w-full py-3 font-medium rounded-lg flex items-center justify-center ${(!isSpecialCategoryProduct(selectedProduct) &&
-                selectedProduct.stock <= 0 &&
-                selectedProduct.categoria !== "Préstamo")
+              className={`w-full py-3 font-medium rounded-lg flex items-center justify-center ${selectedProduct.stock <= 0
                 ? 'bg-gray-300 text-gray-500'
                 : 'bg-[#44943b] text-white'
                 }`}
-              disabled={
-                !isSpecialCategoryProduct(selectedProduct) &&
-                selectedProduct.stock <= 0 &&
-                selectedProduct.categoria !== "Préstamo"
-              }
+              disabled={selectedProduct.stock <= 0}
             >
               <ShoppingBag size={18} className="mr-2" />
-              {isSpecialCategoryProduct(selectedProduct) ? (
-                isProductInCart(selectedProduct.id) ? 'Eliminar del carrito' : 'Agregar al carrito'
-              ) : selectedProduct.categoria === "Préstamo" ? (
-                isProductInCart(selectedProduct.id) ? 'Quitar préstamo del carrito' : 'Solicitar préstamo'
-              ) : selectedProduct.stock <= 0 ? (
+              {selectedProduct.stock <= 0 ? (
                 'Sin stock disponible'
               ) : quantity === 0 ? (
                 'Eliminar del carrito'
@@ -883,6 +916,87 @@ export default function VentasMovile() {
                 'Actualizar carrito'
               ) : (
                 'Agregar al carrito'
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Drawer para productos especiales (venta por kilos) */}
+      {drawerOpen && selectedProduct && categoriasEspeciales.includes(selectedProduct.categoria) && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 z-50 flex items-end transition-all">
+          <div className="bg-white w-full rounded-t-xl p-4 transform transition-transform duration-300 animate-slide-up">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">{selectedProduct.nombre}</h3>
+              <button
+                onClick={closeDrawer}
+                className="p-1 rounded-full hover:bg-gray-100"
+              >
+                <X size={20} className="text-gray-700" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              {selectedProduct.marca && (
+                <p className="text-gray-700">Marca: {selectedProduct.marca}</p>
+              )}
+
+              <p className="text-lg font-bold text-[#44943b] mt-2">
+                Precio sugerido: {formatPrice(selectedProduct.precio)}
+                {selectedProduct.categoria !== "Préstamo" && (
+                  <span className="text-sm ml-1">/kilo</span>
+                )}
+              </p>
+
+              {selectedProduct.categoria === "Préstamo" ? (
+                <p className="text-sm text-blue-600 mt-1">
+                  Este producto corresponde a un <strong>préstamo</strong>.
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600 mt-1">
+                  Este producto se vende por kilo. Ingrese el precio final por kilo.
+                </p>
+              )}
+
+              {cartItems.some(item => item.product.id === selectedProduct.id) && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Ya tienes este producto en el carrito.
+                </p>
+              )}
+            </div>
+
+            {selectedProduct.categoria !== "Préstamo" && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Precio por kilo:</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">S/</span>
+                  <input
+                    type="number"
+                    value={newUnitPrice}
+                    onChange={(e) => {
+                      const value = e.target.value
+                        .replace(/[^0-9.]/g, '')
+                        .replace(/(\..*)\./g, '$1');
+                      setNewUnitPrice(value);
+                    }}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44943b]"
+                    placeholder={selectedProduct.precio.toFixed(2)}
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={addToCart}
+              className="w-full py-3 font-medium rounded-lg flex items-center justify-center bg-[#44943b] text-white mt-4"
+            >
+              <ShoppingBag size={18} className="mr-2" />
+              {cartItems.some(item => item.product.id === selectedProduct.id) ? (
+                selectedProduct.categoria === "Préstamo" ? 'Quitar préstamo del carrito' : 'Actualizar precio'
+              ) : (
+                selectedProduct.categoria === "Préstamo" ? 'Agregar préstamo' : 'Agregar al carrito'
               )}
             </button>
           </div>
@@ -1168,14 +1282,12 @@ export default function VentasMovile() {
               onClose={() => setShowTicket(false)}
               onPrint={() => window.print()}
               onNewSale={() => {
-                // Misma acción que en FinalizarVentaDrawer
                 setStatus(null);
                 setCartItems([]);
                 setSaleActive(false);
                 setCustomerDetailsOpen(false);
                 setCurrentVenta(null);
                 resetCustomerDetails();
-                // No necesitas setShowTicket(false) aquí porque ya lo hace onClose
               }}
               Logo={Logo}
             />

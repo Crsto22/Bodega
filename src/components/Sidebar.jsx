@@ -94,7 +94,7 @@ const Sidebar = ({ updateSidebarWidth }) => {
 
   return (
     <div
-      className={`bg-green-700 text-white shadow-xl transition-all duration-300 flex flex-col h-screen fixed ${
+      className={`bg-green-700 text-white shadow-xl animate transition-all duration-300 flex flex-col h-screen fixed ${
         expanded ? 'w-64 md:w-72' : 'w-16 md:w-20'
       }`}
     >
