@@ -10,7 +10,8 @@ import {
   Settings,
   FileText,
   ChevronRight,
-  Smartphone
+  Smartphone,
+  ClipboardList // Nuevo icono importado
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -18,7 +19,7 @@ const Dashboard = () => {
   const [sidebarWidth, setSidebarWidth] = useState('w-64');
   const [isMobile, setIsMobile] = useState(false);
 
-  // Función para actualizar el ancho del sidebar (usado por el componente Sidebar)
+  // Función para actualizar el ancho del sidebar
   const updateSidebarWidth = (width) => {
     setSidebarWidth(width);
   };
@@ -29,17 +30,12 @@ const Dashboard = () => {
       setIsMobile(window.innerWidth < 768);
     };
     
-    // Verificar inicialmente
     checkIsMobile();
-    
-    // Agregar listener para cambios de tamaño
     window.addEventListener('resize', checkIsMobile);
-    
-    // Limpiar listener
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  // Cards de acceso a rutas mejoradas con diseño moderno
+  // Cards de acceso a rutas
   const routeCards = [
     {
       title: "Ventas",
@@ -60,6 +56,15 @@ const Dashboard = () => {
       hiddenOnDesktop: true
     },
     {
+      title: "Deudas Móvil",
+      icon: <Smartphone size={20} className="text-white" />,
+      path: "/deudasMovile",
+      description: "Pagos pendientes en móvil",
+      bgColor: "bg-gradient-to-br from-amber-400 to-amber-600",
+      iconBg: "bg-amber-700",
+      hiddenOnDesktop: true
+    },
+    {
       title: "Compras",
       icon: <ShoppingBag size={20} className="text-white" />,
       path: "/compras",
@@ -74,7 +79,7 @@ const Dashboard = () => {
       description: "Inventario y catálogo",
       bgColor: "bg-gradient-to-br from-purple-400 to-purple-600",
       iconBg: "bg-purple-700",
-      hiddenOnMobile: true // Ocultar en móviles (mostrar la versión móvil)
+      hiddenOnMobile: true
     },
     {
       title: "Productos Móviles",
@@ -83,7 +88,7 @@ const Dashboard = () => {
       description: "Gestión de productos en móvil",
       bgColor: "bg-gradient-to-br from-violet-400 to-violet-600",
       iconBg: "bg-violet-700",
-      hiddenOnDesktop: true // Ocultar en desktop
+      hiddenOnDesktop: true
     },
     {
       title: "Clientes",
@@ -117,6 +122,18 @@ const Dashboard = () => {
       bgColor: "bg-gradient-to-br from-rose-400 to-rose-600",
       iconBg: "bg-rose-700"
     },
+    // Nueva entrada para Deudas Pendientes (versión escritorio)
+    {
+      title: "Deudas Pendientes",
+      icon: <ClipboardList size={20} className="text-white" />,
+      path: "/deudas",
+      description: "Gestión de pagos fiados",
+      bgColor: "bg-gradient-to-br from-orange-400 to-orange-600",
+      iconBg: "bg-orange-700",
+      hiddenOnMobile: true
+    },
+    // Nueva entrada para Deudas Móvil
+   
     {
       title: "Configuración",
       icon: <Settings size={20} className="text-white" />,
@@ -129,17 +146,17 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Mostrar sidebar solo en pantallas grandes */}
+      {/* Sidebar solo en pantallas grandes */}
       {!isMobile && <Sidebar updateSidebarWidth={updateSidebarWidth} />}
       
       <div className={`flex-grow p-3 md:p-6 transition-all duration-300 ${!isMobile ? (sidebarWidth === 'w-64' ? 'md:ml-72' : 'md:ml-16') : 'ml-0'}`}>
-        {/* Encabezado con fondo suave */}
+        {/* Encabezado */}
         <div className="mb-4 md:mb-8 p-4 bg-white rounded-xl shadow-sm">
           <h1 className="text-xl md:text-3xl font-bold text-gray-800 mb-1">Panel de Control</h1>
           <p className="text-xs md:text-sm text-gray-500">Acceso rápido a todas las secciones del sistema</p>
         </div>
 
-        {/* Cards de acceso rápido con diseño móvil adaptable */}
+        {/* Grid de cards */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5">
           {routeCards.map((card, index) => (
             <Link 
@@ -152,7 +169,7 @@ const Dashboard = () => {
                 <div className="absolute -top-6 -right-6 w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 blur-xl"></div>
                 <div className="absolute -bottom-8 -left-8 w-20 h-20 rounded-full bg-black/5 blur-xl"></div>
                 
-                {/* Contenido de la tarjeta */}
+                {/* Contenido */}
                 <div className="p-3 md:p-4 relative z-10">
                   <div className="flex items-start mb-2 md:mb-3">
                     <div className={`${card.iconBg} p-2 rounded-lg shadow-inner flex items-center justify-center`}>
@@ -175,7 +192,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Espacio adicional al final y footer */}
+        {/* Footer */}
         <div className="mt-8 md:mt-12 text-center text-xs text-gray-400 p-4">
           © {new Date().getFullYear()} Sistema de Gestión
         </div>

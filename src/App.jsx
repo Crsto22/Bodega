@@ -5,6 +5,7 @@ import { ProductProvider } from "./context/ProductContext"; // Importar el conte
 import { ClienteProvider } from "./context/ClienteContext"; // Importar el contexto de clientes
 import { VentaProvider } from "./context/VentaContext"; // Importar el contexto de ventas
 import { ProveedorProvider } from "./context/ProveedorContext"; // Importar el contexto de proveedores
+import { DeudaProvider } from "./context/DeudaContext"; // Importar el contexto de deudas
 import Login from './page/Login';
 import Dashboard from './page/Dashboard';
 import Productos from './page/Productos';
@@ -13,6 +14,7 @@ import Clientes from './page/Clientes';
 import Proveedores from './page/Proveedores';
 import VentasMovile from './page/VentasMovile';
 import ProductosMovile from './page/ProductosMovile';
+import DeudasMovile from './page/DeudasMovile';
 // Componente para proteger rutas
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAuth(); // Obtener el usuario actual del contexto
@@ -137,6 +139,17 @@ function App() {
                 </VentaProvider>
                 </ClienteProvider>
                 </ProductProvider>
+              </ProtectedRoute>
+            }
+          />
+          {/* Ruta de deudas móvil */}
+          <Route
+            path="/deudasMovile"
+            element={
+              <ProtectedRoute>
+                <DeudaProvider> {/* Proveer el contexto de deudas solo en esta ruta */}
+                  <DeudasMovile />
+                </DeudaProvider>
               </ProtectedRoute>
             }
           />

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useVenta } from '../context/VentaContext';
 import domtoimage from "dom-to-image";
+import Logo from "../img/logo.png";
 
 const HistoryVentasMovile = ({ setActiveOption }) => {
   const { ventas, loading, error, deleteVenta } = useVenta();
@@ -316,18 +317,8 @@ const HistoryVentasMovile = ({ setActiveOption }) => {
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-gray-50">
-      {/* Header con título y botón de deudas */}
-      <div className="sticky top-0 z-10 bg-white shadow-sm px-4 py-3 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">Historial de Ventas</h2>
-        <button 
-          onClick={() => setActiveOption('deudas')} 
-          className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-3 py-2 rounded-lg shadow-md hover:shadow-lg transition-all"
-        >
-          <UserCheck size={18} className="mr-1" />
-          <span className="text-sm font-medium">Deudas</span>
-        </button>
-      </div>
+    <div className="flex flex-col w-full h-full">
+
       
       {/* Barra de búsqueda */}
       <div className="px-4 pt-3">
@@ -337,7 +328,7 @@ const HistoryVentasMovile = ({ setActiveOption }) => {
             placeholder="Buscar por cliente o producto..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full py-2 pl-10 pr-4 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            className="w-full text-sm py-2 pl-10 pr-4 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
           />
           <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
           {searchTerm && (
@@ -566,6 +557,7 @@ const HistoryVentasMovile = ({ setActiveOption }) => {
                 }}
               >
                 <div className="text-center font-bold mb-3">
+                <img src={Logo} alt="Logo" className="w-20 mx-auto mb-1" />
                   <div className="text-[15px] mb-1 tracking-tight">COMPROBANTE DE VENTA</div>
                   <div className="text-[10px] opacity-80">
                     Ticket #{selectedVenta?.id.substring(0, 6) || "N/A"}
@@ -642,6 +634,7 @@ const HistoryVentasMovile = ({ setActiveOption }) => {
 
           {/* Ticket oculto para generación de imagen/impresión */}
           <div className="fixed -left-[9999px]">
+
             <div
               ref={ticketRef}
               className="bg-white p-4 w-[262px] text-xs"
@@ -653,6 +646,7 @@ const HistoryVentasMovile = ({ setActiveOption }) => {
               }}
             >
               <div className="text-center font-bold mb-3">
+               <img src={Logo} alt="Logo" className="w-20 mx-auto mb-1" />
                 <div className="text-[15px] mb-1 tracking-tight">COMPROBANTE DE VENTA</div>
                 <div className="text-[10px] opacity-80">
                   Ticket #{selectedVenta?.id.substring(0, 6) || "N/A"}

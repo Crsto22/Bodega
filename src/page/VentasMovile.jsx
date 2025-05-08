@@ -511,7 +511,7 @@ export default function VentasMovile() {
                                         const newPrice = parseFloat(e.target.value) || item.product.precio;
                                         updatePrecioKilo(item.id, newPrice);
                                       }}
-                                      className="w-full pl-10 pr-3 py-2 border placeholder-gray-200 border-gray-300 rounded-lg placeholder-gray-500"
+                                      className="w-full pl-10 pr-3 py-2 border placeholder-gray-200 border-gray-300 rounded-lg "
                                       step="0.01"
                                       min="0"
                                     />
