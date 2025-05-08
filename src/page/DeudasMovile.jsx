@@ -7,7 +7,6 @@ import {
   List,
   Loader2
 } from 'lucide-react';
-import Logo from '../img/logo.png';
 import { useDeuda } from '../context/DeudaContext';
 import ClienteDeudas from '../components/ClienteDeudas';
 
