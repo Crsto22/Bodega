@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { useVenta } from '../context/VentaContext';
 import domtoimage from "dom-to-image";
-import Logo from "../img/logo.png";
 
 const HistoryVentasMovile = ({ setActiveOption }) => {
   const { ventas, loading, error, deleteVenta } = useVenta();
