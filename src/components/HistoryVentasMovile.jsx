@@ -557,7 +557,6 @@ const HistoryVentasMovile = ({ setActiveOption }) => {
                 }}
               >
                 <div className="text-center font-bold mb-3">
-                <img src={Logo} alt="Logo" className="w-20 mx-auto mb-1" />
                   <div className="text-[15px] mb-1 tracking-tight">COMPROBANTE DE VENTA</div>
                   <div className="text-[10px] opacity-80">
                     Ticket #{selectedVenta?.id.substring(0, 6) || "N/A"}
