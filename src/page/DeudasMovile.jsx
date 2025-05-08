@@ -73,11 +73,7 @@ const DeudasMovile = () => {
             <ArrowLeft className="text-gray-700" size={20} />
           </button>
         </Link>
-        <div className="flex-1 flex justify-center">
-          <div className="h-12 w-32 rounded-md flex items-center justify-center">
-            <img src={Logo} alt="Logo" className="h-full w-auto" />
-          </div>
-        </div>
+
         <div className="w-10"></div>
       </div>
 
